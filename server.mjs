@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 
 const root = process.cwd();
 const port = Number(process.env.PORT || 5173);
-const host = process.env.HOST || "127.0.0.1";
+const host = process.env.HOST || "0.0.0.0";
 const envPath = join(root, ".env.local");
 
 if (existsSync(envPath)) {
