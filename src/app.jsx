@@ -125,7 +125,7 @@ function getPhaseLabel(phase, current) {
 
   if (phase === 2) {
     const word = current.marketChange >= 0 ? "gains" : "drops";
-    return `Market ${word} ${formatMoney(current.marketChange)} in Growth.`;
+    return `Market ${word} ${formatMoney(Math.abs(current.marketChange))} in Growth.`;
   }
 
   if (phase === 3) {
@@ -142,7 +142,7 @@ function getProgressText(phase, current) {
   if (phase === 1) return `Income withdrawal: -${formatMoney(current.withdrawal)}`;
 
   if (phase === 2) {
-    return `Growth market move: ${current.marketChange >= 0 ? "+" : ""}${formatMoney(current.marketChange)}`;
+    return `Market return: ${current.marketChange >= 0 ? "+" : "-"}${formatMoney(Math.abs(current.marketChange))}`;
   }
 
   if (phase === 3) {
@@ -169,10 +169,10 @@ function getNarration(phase, current, yearCount) {
   if (phase === 1) {
     return pickNarration(
       [
-        `In year ${current.year}, we use the income bucket for spending. ${withdrawal} comes out. The growth bucket can stay invested.`,
-        `This is a planned withdrawal. ${withdrawal} comes from income, so we do not need to sell growth investments this year.`,
-        `This plan gives each bucket a job. Income pays the bills. Growth stays invested for later.`,
-        `Year ${current.year} starts with a simple draw. The income bucket sends out ${withdrawal}, and the rest of the plan stays on track.`,
+        `In year ${current.year}, we use cash from the income bucket for spending. ${withdrawal} comes out. Our investments in the growth bucket stay in the market.`,
+        `This is a planned withdrawal. ${withdrawal} in cash comes from the income bucket, so we do not need to sell our investments this year.`,
+        `This plan gives each bucket a job. The income bucket holds cash for the bills. The growth bucket holds investments for later.`,
+        `Year ${current.year} starts with a simple draw. ${withdrawal} in cash comes out of the income bucket, and our investments stay on track.`,
       ],
       current,
       phase
@@ -181,27 +181,27 @@ function getNarration(phase, current, yearCount) {
 
   if (phase === 2 && current.marketChange < 0) {
     if (current.year === 2) {
-      return `This is the first tough year. The growth bucket drops by ${marketMove}, but spending still comes from income. That helps avoid selling growth assets after a drop.`;
+      return `In this example, the market drops ${marketMove}. But spending still comes from cash in the income bucket, so we avoid selling our investments after a decline.`;
     }
 
-    return `A second down year is hard. Growth falls another ${marketMove}. But income still pays the withdrawal, so the growth bucket has time to recover.`;
+    return `A second consecutive decline. Our investments fall another ${marketMove}. Cash in the income bucket still covers spending, giving our investments time to recover.`;
   }
 
   if (phase === 2) {
     const options = isEarlyYear
       ? [
           `The growth bucket gains ${marketMove}. Early gains help support future refills.`,
-          `Growth adds ${marketMove}. Income handles spending, while growth keeps working for later.`,
+          `Our investments add ${marketMove}. Cash in the income bucket handles spending, while the growth bucket keeps working for later.`,
         ]
       : isLateYear
         ? [
-            `The growth bucket adds ${marketMove}. Near the end, gains can help refill income.`,
+            `Our investments add ${marketMove}. Near the end, these gains can help refill cash in the income bucket.`,
             `The market adds ${marketMove}. This helps the plan as we get close to the finish.`,
           ]
         : [
-            `The growth bucket rises by ${marketMove}. Spending stays steady, and growth stays invested.`,
-            `Growth gains ${marketMove}. Good years help balance out down years.`,
-            `Growth adds ${marketMove} this year. The plan gives the market time to work.`,
+            `Our investments rise by ${marketMove}. Spending stays steady from cash, and the growth bucket stays in the market.`,
+            `Our investments gain ${marketMove}. Good years help balance out down years.`,
+            `The growth bucket adds ${marketMove} this year. The plan gives our investments time to work.`,
           ];
 
     return pickNarration(options, current, phase);
@@ -210,17 +210,17 @@ function getNarration(phase, current, yearCount) {
   if (phase === 3) {
     if (current.isFinalYear) {
       if (current.refill > 0) {
-        return `At the end, the buckets connect again. ${refill} moves from growth back into income. This rebuilds the spending reserve.`;
+        return `The growth bucket has done its job. We move ${refill} back into cash in the income bucket, refilling the spending reserve for another cycle.`;
       }
 
-      return `At the end, there is not enough growth money for a refill. That means we should review spending, the mix, or the time period.`;
+      return `At the end, there is not enough in our investments to refill the income bucket. That means we should review spending, the allocation, or the time period.`;
     }
 
     return pickNarration(
       [
-        `That closes year ${current.year}. Income is lower on purpose, and growth stayed invested.`,
-        `End of year ${current.year}. We do not refill yet. We give growth more time to work.`,
-        `Year ${current.year} is complete. Spending stayed organized, and growth stayed focused on the future.`,
+        `That closes year ${current.year}. Cash in the income bucket is lower on purpose, and our investments stayed in the market.`,
+        `End of year ${current.year}. We do not refill yet. We give our investments more time to work.`,
+        `Year ${current.year} is complete. Spending came from cash, and our investments stayed focused on the future.`,
       ],
       current,
       phase
@@ -326,6 +326,8 @@ const PREP_STEPS = [
   "Preparing narration",
 ];
 
+const MIN_PREP_DURATION_MS = 7000;
+
 function getAutoplayNarration(stage, current, yearCount) {
   const withdrawal = formatMoney(current.withdrawal);
   const marketMove = formatMoney(Math.abs(current.marketChange));
@@ -333,34 +335,62 @@ function getAutoplayNarration(stage, current, yearCount) {
 
   if (stage === "intro") {
     if (current.year === 1) {
-      return `Here we are in year 1. The income bucket is for spending. The growth bucket stays invested for later.`;
+      return `Here we are in year 1. The cash in the income bucket is for spending. Our investments in the growth bucket stay in the market.`;
     }
 
-    return `Now we move into year ${current.year}. Income pays spending. Growth stays invested.`;
+    if (current.isDownYear && current.year === 2) {
+      return `Year 2 brings a market downturn. This is where the bucket strategy really matters. Even when the market drops, spending still comes from the cash in the income bucket. We do not have to sell anything.`;
+    }
+
+    if (current.isDownYear) {
+      return `Year 3, and the market dips again. Two down years back to back. But the income bucket still has cash to cover spending, so our investments stay right where they are.`;
+    }
+
+    if (finalYear) {
+      return `This is the final year. One last withdrawal, one last market move, and then the refill.`;
+    }
+
+    return `Now we move into year ${current.year}. The income bucket pays spending. The growth bucket stays invested.`;
   }
 
   if (stage === "withdrawal") {
-    return `First, we take ${withdrawal} from the income bucket for this year's spending.`;
+    return `First, we pull ${withdrawal} in cash from the income bucket for this year's spending.`;
   }
 
   if (stage === "market") {
-    if (current.marketChange < 0) {
-      return `In the growth bucket, the market is down ${marketMove}. This is why income is separate. We do not have to sell growth after a drop.`;
+    if (current.marketChange < 0 && current.year === 2) {
+      return `Our investments in the growth bucket are down ${marketMove}. Because spending comes from cash in the income bucket, we can leave our investments alone and wait.`;
     }
 
-    return `In the growth bucket, the market adds ${marketMove}. Income handled spending, and growth stayed in the market.`;
+    if (current.marketChange < 0) {
+      return `Another decline, and the income bucket still covered every dollar of spending. The growth bucket just needs time.`;
+    }
+
+    return `Our investments in the growth bucket add ${marketMove}. A good year for growth while the income bucket handled the bills.`;
   }
 
   if (stage === "close" && finalYear) {
     if (current.refill > 0) {
-      return `At the end, we move ${formatMoney(current.refill)} from growth back into income. This sets up the next spending cycle.`;
+      return `Here is the payoff. We move ${formatMoney(current.refill)} from the growth bucket back into cash in the income bucket, refilling the spending reserve. The bucket strategy did its job.`;
     }
 
-    return `At the end, there is no refill available. The next step is to review spending, the mix, or the time period.`;
+    return `At the end, the growth bucket does not have enough to refill the income bucket. That tells us to revisit the spending plan, the time horizon, or the allocation.`;
   }
 
   if (stage === "close") {
-    return `That completes year ${current.year}. We leave the buckets alone and keep moving toward the final refill.`;
+    if (current.year === 1) {
+      return `Year 1 is done. Straightforward.`;
+    }
+
+    if (current.isDownYear && current.year === 2) {
+      return `Spending was covered by cash. Our investments took a hit, but we did not have to sell.`;
+    }
+
+    if (current.isDownYear) {
+      return `The worst is behind us. Now we give our investments time to recover.`;
+    }
+
+    return `That completes year ${current.year}. We leave the buckets alone and keep moving toward the refill.`;
   }
 
   return "";
@@ -371,15 +401,15 @@ function getStrategyIntroNarration(stage, totalAssets, incomePct) {
   const growthAmount = totalAssets - incomeAmount;
 
   if (stage === "total") {
-    return `In this walkthrough, we will look at an income and growth bucket strategy. The goal is simple. One bucket pays for spending now. The other bucket stays invested for later. At the end, growth can help refill income. We begin with one portfolio: ${formatMoney(totalAssets)}.`;
+    return `In this walkthrough, we will look at an income and growth bucket strategy. The idea is straightforward. We split one portfolio into two buckets, each with its own job. The income bucket holds cash that we draw from for spending each year. The growth bucket stays fully invested in the market and we do not touch it. Over time, those investments can grow, and at the end, we use that growth to refill the income bucket for the next cycle. We begin with one portfolio: ${formatMoney(totalAssets)}.`;
   }
 
   if (stage === "income") {
-    return `From that portfolio, ${formatMoney(incomeAmount)}, or ${incomePct} percent, goes into the income bucket. This is the money used for planned spending.`;
+    return `From that portfolio, ${formatMoney(incomeAmount)}, or ${incomePct} percent, goes into the income bucket as cash. This is the money set aside for planned spending.`;
   }
 
   if (stage === "growth") {
-    return `The remaining ${formatMoney(growthAmount)} goes into the growth bucket. This money stays invested, so it has time to grow and help refill income later.`;
+    return `The remaining ${formatMoney(growthAmount)} goes into the growth bucket as investments. This money stays in the market, so it has time to grow and help refill the income bucket later.`;
   }
 
   if (stage === "handoff") {
@@ -398,15 +428,22 @@ function getIntroStageText(stage) {
   return "";
 }
 
-function getFastTrackNarration(stage, startYear, endYear) {
-  const remainingYears = Math.max(0, endYear - startYear + 1);
-
+function getFastTrackNarration(stage, startYear, endYear, finalRow) {
   if (stage === "setup") {
-    return `Now we will fast-track the remaining ${remainingYears} years. Each year, income pays the withdrawal, and the market does its work in growth.`;
+    return `From here, the plan keeps running. Each year, cash comes out of the income bucket for spending. Meanwhile, using a conservative estimate of market growth, our investments in the growth bucket continue to work.`;
   }
 
-  if (stage === "wrap") {
-    return `The fast-track run is complete. We are at the end, so now we can look at the final refill.`;
+  if (stage === "summary") {
+    const growthEnd = formatMoney(finalRow.afterMarketGrowth);
+    const incomeEnd = formatMoney(finalRow.afterWithdrawalIncome);
+    return `Over ${endYear} years, the income bucket paid out spending every single year. Even through two back-to-back market downturns, we never had to sell our investments. Using conservative growth estimates, the growth bucket has worked its way to ${growthEnd}, and the income bucket sits at ${incomeEnd}. So what happens next?`;
+  }
+
+  if (stage === "reveal") {
+    if (finalRow.refill > 0) {
+      return `Now our investments have had time to recover. We move ${formatMoney(finalRow.refill)} from the growth bucket back into cash in the income bucket, replenishing the spending reserve for the next cycle. That is the bucket strategy at work.`;
+    }
+    return `At the end, there is not enough in our investments to refill the income bucket. The next step is to review spending, the allocation, or the time period.`;
   }
 
   return "";
@@ -426,6 +463,7 @@ function buildPresentationSegments({
     for (const stage of ["total", "income", "growth", "handoff"]) {
       segments.push({
         kind: "intro",
+        section: "intro",
         stage,
         text: getStrategyIntroNarration(stage, totalAssets, incomePct),
         pauseAfter: stage === "growth" || stage === "handoff" ? 220 : 180,
@@ -436,38 +474,44 @@ function buildPresentationSegments({
   const normalEndIndex = Math.min(2, simulation.length - 1);
   for (let index = startIndex; index <= normalEndIndex; index += 1) {
     const row = simulation[index];
+    const isDownYear = row.isDownYear;
+
     segments.push(
       {
         kind: "year",
+        section: "walkthrough",
         yearIndex: index,
         phase: 0,
         text: getAutoplayNarration("intro", row, years),
         leadMs: 140,
-        pauseAfter: 250,
+        pauseAfter: isDownYear ? 500 : 250,
       },
       {
         kind: "year",
+        section: "walkthrough",
         yearIndex: index,
         phase: 1,
         text: getAutoplayNarration("withdrawal", row, years),
         leadMs: 0,
-        pauseAfter: 500,
+        pauseAfter: isDownYear ? 700 : 500,
       },
       {
         kind: "year",
+        section: "walkthrough",
         yearIndex: index,
         phase: 2,
         text: getAutoplayNarration("market", row, years),
         leadMs: 0,
-        pauseAfter: 650,
+        pauseAfter: isDownYear ? 1000 : 650,
       },
       {
         kind: "year",
+        section: "walkthrough",
         yearIndex: index,
         phase: 3,
         text: getAutoplayNarration("close", row, years),
         leadMs: 0,
-        pauseAfter: row.isFinalYear ? 1600 : 800,
+        pauseAfter: row.isFinalYear ? 2200 : isDownYear ? 900 : 800,
       }
     );
   }
@@ -477,29 +521,31 @@ function buildPresentationSegments({
     const finalIndex = simulation.length - 1;
     const finalRow = simulation[finalIndex];
 
-    segments.push({
-      kind: "voice-only",
-      text: getFastTrackNarration("setup", fastTrackStartIndex + 1, years),
-      waitForEnd: false,
-      pauseAfter: 500,
-    });
-
+    let isFirstFastTick = true;
     for (let index = fastTrackStartIndex; index <= finalIndex; index += 1) {
       for (const phase of [0, 1, 2]) {
-        segments.push({
+        const tick = {
           kind: "fast-year",
+          section: "fasttrack",
           yearIndex: index,
           phase,
-          pauseAfter: phase === 0 ? 220 : phase === 1 ? 420 : 460,
-        });
+          pauseAfter: phase === 0 ? 450 : phase === 1 ? 650 : 700,
+        };
+        if (isFirstFastTick) {
+          tick.text = getFastTrackNarration("setup", fastTrackStartIndex + 1, years, finalRow);
+          tick.waitForEnd = false;
+          isFirstFastTick = false;
+        }
+        segments.push(tick);
       }
 
       if (index < finalIndex) {
         segments.push({
           kind: "fast-year",
+          section: "fasttrack",
           yearIndex: index,
           phase: 3,
-          pauseAfter: 360,
+          pauseAfter: 600,
         });
       }
     }
@@ -507,17 +553,25 @@ function buildPresentationSegments({
     segments.push(
       {
         kind: "voice-only",
-        text: getFastTrackNarration("wrap", fastTrackStartIndex + 1, years),
+        section: "finale",
+        text: getFastTrackNarration("summary", fastTrackStartIndex + 1, years, finalRow),
         waitForEnd: true,
-        pauseAfter: 450,
+        pauseAfter: 600,
+      },
+      {
+        kind: "voice-only",
+        section: "finale",
+        text: getFastTrackNarration("reveal", fastTrackStartIndex + 1, years, finalRow),
+        waitForEnd: false,
+        pauseAfter: 2000,
       },
       {
         kind: "year",
+        section: "finale",
         yearIndex: finalIndex,
         phase: 3,
-        text: getAutoplayNarration("close", finalRow, years),
-        leadMs: 0,
-        pauseAfter: 1600,
+        waitForEnd: false,
+        pauseAfter: 3500,
       }
     );
   }
@@ -534,10 +588,10 @@ function runTests() {
   console.assert(rows[9].isFinalYear === true, "final year flag");
   console.assert(rows[9].refill >= 0, "final year refill is non-negative");
   console.assert(getProgressText(1, rows[0]).includes("Income withdrawal"), "progress text has withdrawal step");
-  console.assert(getProgressText(2, rows[0]).includes("Growth market move"), "progress text has market step");
+  console.assert(getProgressText(2, rows[0]).includes("Market return"), "progress text has market step");
   console.assert(getPhaseLabel(3, rows[0]) === "End of year balances.", "non-final phase 3 does not mention refill");
-  console.assert(getNarration(2, rows[1], 10).includes("avoid selling growth assets"), "first down year frames strategy");
-  console.assert(getNarration(2, rows[2], 10).includes("time to recover"), "second down year frames strategy");
+  console.assert(getNarration(2, rows[1], 10).includes("avoid selling our investments"), "first down year frames strategy");
+  console.assert(getNarration(2, rows[2], 10).includes("time to recover"), "second down year frames recovery");
 
   const oneYear = simulateYears(500000, 40, 1);
   console.assert(oneYear.length === 1, "one-year scenario returns one row");
@@ -547,6 +601,8 @@ runTests();
 
 export default function IncomeGrowthBucketDiagram() {
   const [presentMode, setPresentMode] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [yearIndex, setYearIndex] = useState(0);
   const [years, setYears] = useState(10);
   const [phase, setPhase] = useState(0);
@@ -559,8 +615,10 @@ export default function IncomeGrowthBucketDiagram() {
   const [voiceOn, setVoiceOn] = useState(true);
   const [totalAssets, setTotalAssets] = useState(1000000);
   const [incomePct, setIncomePct] = useState(30);
+  const [skipSignal, setSkipSignal] = useState(0);
   const audioRef = useRef(null);
   const playCursorRef = useRef(0);
+  const skipPhaseRef = useRef(null);
 
   const simulation = useMemo(
     () => simulateYears(totalAssets, incomePct, years),
@@ -594,6 +652,42 @@ export default function IncomeGrowthBucketDiagram() {
     setPresentationSegments([]);
     setIsPrepared(false);
     setPrepStep(0);
+  };
+
+  const skipSection = () => {
+    if (!autoPlay || !presentationSegments.length) return;
+    const cursorNow = playCursorRef.current;
+    const currentSection = presentationSegments[cursorNow]?.section;
+    let target = presentationSegments.length;
+    for (let i = cursorNow + 1; i < presentationSegments.length; i += 1) {
+      if (presentationSegments[i].section !== currentSection) {
+        target = i;
+        break;
+      }
+    }
+    if (target >= presentationSegments.length) {
+      stopPresentation();
+      return;
+    }
+    const seg = presentationSegments[target];
+    stopCurrentAudio();
+    if (seg.kind === "year" || seg.kind === "fast-year") {
+      skipPhaseRef.current = seg.phase;
+      setYearIndex(seg.yearIndex);
+      setPhase(seg.phase);
+    } else if (seg.section === "finale") {
+      skipPhaseRef.current = 2;
+      setYearIndex(simulation.length - 1);
+      setPhase(2);
+    }
+    if (seg.kind === "intro") {
+      setIntroStage(seg.stage);
+    } else {
+      setIntroStage("off");
+    }
+    playCursorRef.current = target;
+    setPlayCursor(target);
+    setSkipSignal((s) => s + 1);
   };
 
   // Cache-aware narration loader. Cache lookup is synchronous (instant);
@@ -692,15 +786,22 @@ export default function IncomeGrowthBucketDiagram() {
 
   const incomeDisplay = getBucketDisplayValue(current, "income", phase);
   const growthDisplay = getBucketDisplayValue(current, "growth", phase);
-  const spotlightTarget =
-    phase === 1 ? "income" : phase === 2 ? "growth" : phase === 3 ? "both" : "none";
+  const isFastTracking = autoPlay && presentationSegments[playCursor]?.kind === "fast-year";
+  const spotlightTarget = isFastTracking
+    ? "none"
+    : phase === 1 ? "income" : phase === 2 ? "growth" : phase === 3 ? "both" : "none";
 
   useEffect(() => {
     setYearIndex((index) => Math.min(index, years - 1));
   }, [years]);
 
   useEffect(() => {
-    setPhase(0);
+    if (skipPhaseRef.current !== null) {
+      setPhase(skipPhaseRef.current);
+      skipPhaseRef.current = null;
+    } else {
+      setPhase(0);
+    }
   }, [yearIndex, totalAssets, incomePct, years]);
 
   const advance = () => {
@@ -736,6 +837,7 @@ export default function IncomeGrowthBucketDiagram() {
         includeIntro,
       });
 
+      const prepStart = Date.now();
       if (includeIntro) {
         setIntroStage("preparing");
         setPrepStep(0);
@@ -754,39 +856,64 @@ export default function IncomeGrowthBucketDiagram() {
         .map((segment, index) => ({ segment, index }))
         .filter(({ segment }) => segment.text);
 
-      if (textBearing.length > 0) {
-        const total = textBearing.length;
-        let completed = 0;
-
-        await mapWithConcurrency(
-          textBearing,
-          async ({ segment, index: segmentIndex }) => {
-            if (cancelled) return;
-            const url = await loadSpeechReliable(segment.text, {
-              attempts: 2,
-              timeoutMs: 8000,
-            });
-            if (cancelled) return;
-            prepared[segmentIndex].speechUrl = url;
-            completed += 1;
-            if (includeIntro) {
-              const stepIndex = Math.min(
-                PREP_STEPS.length - 1,
-                1 + Math.floor((completed / total) * (PREP_STEPS.length - 2))
-              );
-              setPrepStep(stepIndex);
-            }
-          },
-          4
-        );
+      // Display progress is gated by min(workRatio, timeRatio) so the prep
+      // animation always lasts at least MIN_PREP_DURATION_MS even when every
+      // clip is already cached and downloads finish instantly.
+      let workRatio = 0;
+      let stepTicker = null;
+      if (includeIntro) {
+        stepTicker = setInterval(() => {
+          const timeRatio = Math.min(
+            (Date.now() - prepStart) / MIN_PREP_DURATION_MS,
+            1
+          );
+          const ratio = Math.min(workRatio, timeRatio);
+          const step = Math.min(
+            PREP_STEPS.length - 1,
+            Math.floor(ratio * PREP_STEPS.length)
+          );
+          setPrepStep(step);
+        }, 80);
       }
 
-      if (cancelled) return;
+      try {
+        if (textBearing.length > 0) {
+          const total = textBearing.length;
+          let completed = 0;
 
-      if (includeIntro) {
-        setPrepStep(PREP_STEPS.length - 1);
-        await delay(250);
+          await mapWithConcurrency(
+            textBearing,
+            async ({ segment, index: segmentIndex }) => {
+              if (cancelled) return;
+              const url = await loadSpeechReliable(segment.text, {
+                attempts: 2,
+                timeoutMs: 8000,
+              });
+              if (cancelled) return;
+              prepared[segmentIndex].speechUrl = url;
+              completed += 1;
+              workRatio = completed / total;
+            },
+            4
+          );
+        } else {
+          workRatio = 1;
+        }
+
         if (cancelled) return;
+
+        if (includeIntro) {
+          const elapsed = Date.now() - prepStart;
+          if (elapsed < MIN_PREP_DURATION_MS) {
+            await delay(MIN_PREP_DURATION_MS - elapsed);
+          }
+          if (cancelled) return;
+          setPrepStep(PREP_STEPS.length - 1);
+          await delay(250);
+          if (cancelled) return;
+        }
+      } finally {
+        if (stepTicker) clearInterval(stepTicker);
       }
 
       setPresentationSegments(prepared);
@@ -858,6 +985,7 @@ export default function IncomeGrowthBucketDiagram() {
     voiceOn,
     totalAssets,
     incomePct,
+    skipSignal,
   ]);
 
   // Speak on phase change
@@ -876,8 +1004,58 @@ export default function IncomeGrowthBucketDiagram() {
         incomePct={incomePct}
       />
 
+      {showLanding && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950">
+          <div className="mx-auto max-w-xl px-6 text-center">
+            <img src="/assets/logo-tagline-sm.png" alt="CMG Wealth Management" className="mx-auto mb-10 w-64" />
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/40">Income & Growth</p>
+            <h1 className="mt-4 text-5xl font-bold tracking-tight md:text-6xl">Bucket Strategy</h1>
+            <p className="mx-auto mt-5 max-w-md text-lg text-white/60">
+              See how splitting one portfolio into two buckets can protect spending through market downturns.
+            </p>
+
+            <AnimatePresence>
+              {showSettings && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-8 grid gap-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-left md:grid-cols-3">
+                    <SliderControl label="Total Savings" value={formatMoney(totalAssets)} min={250000} max={3000000} step={25000} rawValue={totalAssets} onChange={setTotalAssets} />
+                    <SliderControl label="Income Allocation" value={`${incomePct}%`} min={10} max={80} step={5} rawValue={incomePct} onChange={setIncomePct} />
+                    <SliderControl label="Investment Horizon" value={`${years} years`} min={5} max={25} step={1} rawValue={years} onChange={setYears} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => {
+                  setIntroStage("preparing");
+                  setShowLanding(false);
+                  setAutoPlay(true);
+                }}
+                className="rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-gray-950 shadow-lg transition hover:bg-white/90"
+              >
+                Start Simulation
+              </button>
+              <button
+                onClick={() => setShowSettings((s) => !s)}
+                className="rounded-xl border border-white/20 bg-white/5 px-8 py-3.5 text-base font-semibold text-white/80 transition hover:bg-white/10"
+              >
+                {showSettings ? "Hide Settings" : "Adjust Settings"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
-        {spotlightTarget !== "none" && !showIntro && (
+        {spotlightTarget !== "none" && !showIntro && !showLanding && (
           <motion.div
             key="page-spotlight"
             initial={{ opacity: 0 }}
@@ -889,48 +1067,47 @@ export default function IncomeGrowthBucketDiagram() {
         )}
       </AnimatePresence>
 
-      <div className="fixed left-4 top-1/2 z-[80] hidden -translate-y-1/2 md:block">
-        <Button onClick={back} variant="secondary" disabled={yearIndex === 0}>
-          Back
-        </Button>
-      </div>
-
-      <div className="fixed right-4 top-1/2 z-[80] hidden -translate-y-1/2 md:block">
-        <Button onClick={advance}>Next</Button>
-      </div>
-
-      <div className="fixed right-4 top-6 z-[80] flex gap-2">
-        <Button
-          onClick={() => {
-            if (voiceOn) stopCurrentAudio();
-            resetPresentation();
-            setVoiceOn(v => !v);
-          }}
-          title="Narration uses an AI-generated OpenAI voice."
-          variant="secondary"
-        >
-          {voiceOn ? "AI Voice On" : "AI Voice Off"}
-        </Button>
-        <Button onClick={() => setAutoPlay((playing) => !playing)} variant="secondary">
-          {autoPlay ? "Pause" : "Play"}
-        </Button>
-        <Button
-          onClick={() => {
-            if (presentMode) {
+      {!showLanding && (
+        <div className="fixed right-4 top-6 z-[80] flex gap-2">
+          <Button
+            onClick={() => {
+              if (voiceOn) stopCurrentAudio();
+              resetPresentation();
+              setVoiceOn(v => !v);
+            }}
+            title="Narration uses an AI-generated OpenAI voice."
+            variant="secondary"
+          >
+            {voiceOn ? "AI Voice On" : "AI Voice Off"}
+          </Button>
+          <Button onClick={() => setAutoPlay((playing) => !playing)} variant="secondary">
+            {autoPlay ? "Pause" : "Play"}
+          </Button>
+          {autoPlay && presentationSegments.length > 0 && (
+            <Button onClick={skipSection} variant="secondary">
+              Skip →
+            </Button>
+          )}
+          <Button
+            onClick={() => {
               stopPresentation();
               resetPresentation();
-            }
-            setPresentMode((p) => !p);
-          }}
-        >
-          {presentMode ? "Exit" : "Present"}
-        </Button>
-      </div>
+              setYearIndex(0);
+              setPhase(0);
+              setShowLanding(true);
+              setShowSettings(false);
+            }}
+            variant="secondary"
+          >
+            Exit
+          </Button>
+        </div>
+      )}
 
       <div className={`mx-auto max-w-6xl space-y-8 pt-16 ${presentMode ? "px-10" : ""}`}>
         <div>
           <div className="p-6 md:p-8">
-            <div className="mb-10 text-center">
+            <div className="relative z-40 mb-10 text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/55">Investment Horizon Refill Strategy</p>
               <h2 className="mt-3 text-5xl font-bold tracking-normal">Year {current.year}</h2>
               <p className="mx-auto mt-3 min-h-[32px] max-w-3xl text-xl font-semibold text-white/80">
@@ -948,6 +1125,7 @@ export default function IncomeGrowthBucketDiagram() {
                 current={current}
                 spotlight={spotlightTarget === "income" || spotlightTarget === "both"}
                 dimmed={spotlightTarget === "growth"}
+                refillGlow={phase === 3 && current.isFinalYear && current.refill > 0}
               />
               <Bucket
                 title="Growth Bucket"
@@ -958,20 +1136,41 @@ export default function IncomeGrowthBucketDiagram() {
                 current={current}
                 spotlight={spotlightTarget === "growth" || spotlightTarget === "both"}
                 dimmed={spotlightTarget === "income"}
+                refillGlow={phase === 3 && current.isFinalYear && current.refill > 0}
               />
 
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 md:block">
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 md:block">
                 <AnimatePresence mode="wait">
-                  {phase === 3 && current.isFinalYear && (
+                  {phase === 3 && current.isFinalYear && current.refill > 0 && (
                     <motion.div
-                      key={`refill-${current.year}`}
+                      key={`refill-arrow-${current.year}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex flex-col items-center gap-2"
+                    >
+                      <RefillArrow />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.8, delay: 1.0 }}
+                        className="rounded-full border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-[#397AA8] shadow-lg"
+                      >
+                        Income ← {formatMoney(current.refill)}
+                      </motion.div>
+                    </motion.div>
+                  )}
+                  {phase === 3 && current.isFinalYear && current.refill === 0 && (
+                    <motion.div
+                      key={`no-refill-${current.year}`}
                       initial={{ opacity: 0, scale: 0.9, y: 8 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.55 }}
-                      className="rounded-full border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-[#397AA8] shadow-lg"
+                      className="rounded-full border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-gray-500 shadow-lg"
                     >
-                      {current.refill > 0 ? `${formatMoney(current.refill)} → Income` : "No refill"}
+                      No refill available
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -996,18 +1195,109 @@ export default function IncomeGrowthBucketDiagram() {
           </div>
         </div>
 
-        {!presentMode && (
-          <Controls
-            totalAssets={totalAssets}
-            setTotalAssets={setTotalAssets}
-            incomePct={incomePct}
-            setIncomePct={setIncomePct}
-            years={years}
-            setYears={setYears}
-          />
-        )}
       </div>
     </div>
+  );
+}
+
+function PrepProgressRing({ current, total }) {
+  const size = 96;
+  const stroke = 7;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const ratio = total > 0 ? Math.min(current / total, 1) : 0;
+  const dashOffset = circumference * (1 - ratio);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="-rotate-90"
+      >
+        <defs>
+          <linearGradient id="prep-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#397AA8" />
+            <stop offset="100%" stopColor="#4c8536" />
+          </linearGradient>
+        </defs>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth={stroke}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#prep-ring-grad)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={false}
+          animate={{ strokeDashoffset: dashOffset }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#prep-ring-grad)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${circumference * 0.08} ${circumference}`}
+          animate={{ strokeDashoffset: [0, -circumference] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+          style={{ opacity: ratio < 1 ? 0.5 : 0 }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold tabular-nums leading-none">{current}</span>
+        <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">
+          of {total}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PrepStepIndicator({ isDone, isActive, accent }) {
+  if (isDone) {
+    return (
+      <span
+        className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+        style={{ backgroundColor: "#4c8536" }}
+      >
+        ✓
+      </span>
+    );
+  }
+  if (isActive) {
+    return (
+      <span className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+        <motion.span
+          className="absolute inset-0 rounded-full"
+          style={{ backgroundColor: accent }}
+          animate={{ scale: [1, 1.8], opacity: [0.5, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+        />
+        <motion.span
+          className="relative h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: accent }}
+          animate={{ scale: [1, 1.25, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </span>
+    );
+  }
+  return (
+    <span className="h-6 w-6 shrink-0 rounded-full border border-white/15" />
   );
 }
 
@@ -1057,11 +1347,7 @@ function StrategyIntroOverlay({ stage, prepStep, totalAssets, incomePct }) {
 
             {isPreparing ? (
               <div className="mx-auto flex h-[420px] max-w-2xl flex-col items-center justify-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1.1, ease: "linear", repeat: Infinity }}
-                  className="h-14 w-14 rounded-full border-4 border-white/20 border-t-white"
-                />
+                <PrepProgressRing current={prepStep} total={PREP_STEPS.length} />
                 <p className="mt-6 text-sm font-semibold uppercase tracking-[0.2em] text-white/55">
                   Preparing strategy view
                 </p>
@@ -1069,6 +1355,7 @@ function StrategyIntroOverlay({ stage, prepStep, totalAssets, incomePct }) {
                   {PREP_STEPS.map((step, index) => {
                     const isDone = index < prepStep;
                     const isActive = index === prepStep;
+                    const accent = index % 2 === 0 ? "#4c8536" : "#397AA8";
 
                     return (
                       <motion.div
@@ -1076,18 +1363,36 @@ function StrategyIntroOverlay({ stage, prepStep, totalAssets, incomePct }) {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.35, delay: index * 0.05 }}
-                        className={`flex items-center justify-between rounded-2xl border px-5 py-3 text-sm font-semibold ${
+                        className={`relative flex items-center justify-between overflow-hidden rounded-2xl border px-5 py-3 text-sm font-semibold transition-colors ${
                           isActive
-                            ? "border-white/35 bg-white/12 text-white"
+                            ? "bg-white/12 text-white"
                             : isDone
-                              ? "border-white/15 bg-white/8 text-white/70"
+                              ? "bg-white/8 text-white/70"
                               : "border-white/10 bg-white/[0.03] text-white/35"
                         }`}
+                        style={
+                          isActive
+                            ? {
+                                borderColor: `${accent}99`,
+                                boxShadow: `0 8px 24px -12px ${accent}cc, inset 0 0 0 1px ${accent}40`,
+                              }
+                            : isDone
+                              ? { borderColor: "rgba(76,133,54,0.35)" }
+                              : undefined
+                        }
                       >
-                        <span>{step}</span>
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-xs">
-                          {isDone ? "✓" : isActive ? "•" : ""}
-                        </span>
+                        {isActive && (
+                          <motion.span
+                            className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3"
+                            style={{
+                              background: `linear-gradient(90deg, transparent, ${accent}40, transparent)`,
+                            }}
+                            animate={{ left: ["-33%", "133%"] }}
+                            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                          />
+                        )}
+                        <span className="relative">{step}</span>
+                        <PrepStepIndicator isDone={isDone} isActive={isActive} accent={accent} />
                       </motion.div>
                     );
                   })}
@@ -1221,18 +1526,49 @@ function AnimatedMoney({ value, className = "" }) {
   return <span className={className}>{formatMoney(display)}</span>;
 }
 
-function Bucket({ title, value, total, color, phase, current, spotlight = false, dimmed = false }) {
+function RefillArrow() {
+  return (
+    <svg width="120" height="32" viewBox="0 0 120 32" fill="none">
+      <defs>
+        <linearGradient id="refill-grad" x1="100%" y1="50%" x2="0%" y2="50%">
+          <stop offset="0%" stopColor="#397AA8" />
+          <stop offset="100%" stopColor="#4c8536" />
+        </linearGradient>
+      </defs>
+      <motion.path
+        d="M110 16 C 85 16, 75 6, 60 6 C 45 6, 35 16, 10 16"
+        stroke="url(#refill-grad)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        fill="none"
+        strokeDasharray="4 6"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: 1 }}
+        transition={{ duration: 1.0, ease: "easeInOut" }}
+      />
+      <motion.polygon
+        points="14,10 4,16 14,22"
+        fill="#4c8536"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.8 }}
+      />
+    </svg>
+  );
+}
+
+function Bucket({ title, value, total, color, phase, current, spotlight = false, dimmed = false, refillGlow = false }) {
   const [display, setDisplay] = useState(value);
 
   useEffect(() => {
     const controls = animate(display, value, {
-      duration: 1,
+      duration: refillGlow ? 2.2 : 1,
       ease: "easeOut",
       onUpdate: (latest) => setDisplay(latest),
     });
 
     return () => controls.stop();
-  }, [value]);
+  }, [value, refillGlow]);
 
   const percent = total > 0 ? Math.max(0, Math.min(display / total, 1)) : 0;
   const isIncome = title === "Income Bucket";
@@ -1247,7 +1583,8 @@ function Bucket({ title, value, total, color, phase, current, spotlight = false,
         opacity: dimmed ? 0.45 : 1,
       }}
       transition={{ duration: 0.4 }}
-      className={`relative h-[300px] overflow-hidden rounded-3xl border p-6 text-center shadow-2xl ${spotlight ? "z-40 ring-4 ring-white/80" : "z-0"} ${baseClass}`}
+      className={`relative h-[300px] overflow-hidden rounded-3xl border p-6 text-center shadow-2xl ${spotlight ? "z-40 ring-4 ring-white/80" : refillGlow ? "z-40" : "z-0"} ${baseClass}`}
+      style={refillGlow ? { boxShadow: `0 0 30px ${color === "green" ? "rgba(76,133,54,0.4)" : "rgba(57,122,168,0.4)"}` } : undefined}
     >
       <motion.div
         className={`absolute bottom-0 left-0 w-full ${fillClass}`}
@@ -1307,7 +1644,7 @@ function YearTable({ simulation, yearIndex, phase }) {
             <th className="bg-[#4c8536] p-4 text-white">Withdraw</th>
             <th className="bg-[#4c8536] p-4 text-white">Income End</th>
             <th className="bg-[#397AA8] p-4 text-white">Growth Start</th>
-            <th className="bg-[#397AA8] p-4 text-white">Market</th>
+            <th className="bg-[#397AA8] p-4 text-white">Market Return</th>
             <th className="bg-[#397AA8] p-4 text-white">Growth End</th>
           </tr>
         </thead>
@@ -1334,8 +1671,12 @@ function YearTable({ simulation, yearIndex, phase }) {
                     {!isCurrent || phase >= 3 ? formatMoney(row.endIncome) : "—"}
                   </td>
                   <td className={`p-4 ${isCurrent ? "bg-white/10 text-white" : mutedCell}`}>{formatMoney(row.startGrowth)}</td>
-                  <td className={`p-4 ${isCurrent ? (row.marketChange >= 0 ? "bg-white/10 text-[#b8e2aa]" : "bg-white/10 text-red-300") : mutedCell}`}>
-                    {!isCurrent || phase >= 2 ? `${row.marketChange >= 0 ? "+" : ""}${formatMoney(row.marketChange)}` : "—"}
+                  <td className={`p-4 ${
+                    isCurrent
+                      ? row.marketChange >= 0 ? "bg-white/10 text-[#b8e2aa]" : "bg-white/10 text-red-300"
+                      : row.marketChange >= 0 ? "bg-white/[0.03] text-[#b8e2aa]/50" : "bg-white/[0.03] text-red-300/50"
+                  }`}>
+                    {!isCurrent || phase >= 2 ? `${row.marketChange >= 0 ? "+" : "-"}${formatMoney(Math.abs(row.marketChange))}` : "—"}
                   </td>
                   <td className={`p-4 font-semibold ${isCurrent ? "bg-white/10 text-white" : mutedCell}`}>
                     {!isCurrent || phase >= 3 ? formatMoney(row.endGrowth) : "—"}

@@ -26,6 +26,11 @@ const types = {
   ".jsx": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
 };
 
 function send(res, status, body, type = "text/plain; charset=utf-8") {
