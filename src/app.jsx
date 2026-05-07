@@ -1146,6 +1146,9 @@ export default function IncomeGrowthBucketDiagram() {
                 {showSettings ? "Hide Settings" : "Adjust Settings"}
               </button>
             </div>
+            <a href="/sor" className="mt-5 block text-sm text-white/35 hover:text-white/60 transition">
+              View: Sequence of Returns Risk →
+            </a>
           </div>
         </div>
       )}

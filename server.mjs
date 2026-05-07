@@ -218,6 +218,15 @@ createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/sor") {
+    const sorPath = join(root, "sor.html");
+    if (existsSync(sorPath)) {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      createReadStream(sorPath).pipe(res);
+      return;
+    }
+  }
+
   const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
   const resolved = normalize(join(root, decodeURIComponent(pathname)));
 
