@@ -50,6 +50,7 @@ function simulateYears(total, incomePct, years) {
   let income = total * (incomePct / 100);
   let growth = total - income;
   const initialIncome = income;
+  const annualWithdrawal = income / years;
   const results = [];
 
   for (let i = 0; i < years; i += 1) {
@@ -58,7 +59,7 @@ function simulateYears(total, incomePct, years) {
 
     const startIncome = income;
     const startGrowth = growth;
-    const withdrawal = startIncome * 0.12;
+    const withdrawal = Math.min(annualWithdrawal, startIncome);
     const afterWithdrawalIncome = Math.max(0, startIncome - withdrawal);
 
     const marketChange = startGrowth * growthRate;
@@ -635,6 +636,7 @@ function runTests() {
   console.assert(rows.length === 10, "rows length");
   console.assert(rows[0].startIncome === 300000, "income starts at 30% allocation");
   console.assert(rows[0].startGrowth === 700000, "growth starts at remaining allocation");
+  console.assert(rows.every((row) => row.withdrawal === 30000), "flat $30k withdrawal each year");
   console.assert(rows.slice(0, 9).every((row) => row.refill === 0), "no refill before final year");
   console.assert(rows[9].isFinalYear === true, "final year flag");
   console.assert(rows[9].refill >= 0, "final year refill is non-negative");
