@@ -256,6 +256,10 @@ function withTimeout(promise, ms) {
 // the rest of the tab session. Concurrent requests for identical text wait
 // on the same fetch instead of hammering the server.
 const SPEECH_CACHE_MAX = 96;
+// How many narration clips to preload before playback starts, and how many to
+// keep warm ahead of the playhead during playback. Keeps dev/test runs from
+// burning ElevenLabs credits on the entire timeline up front.
+const PRELOAD_WINDOW = 4;
 const speechBlobUrlCache = new Map();
 const speechInflight = new Map();
 
@@ -926,13 +930,15 @@ export default function IncomeGrowthBucketDiagram() {
         speechUrl: null,
       }));
 
-      // Preload speech for every text-bearing segment in parallel (bounded
-      // concurrency). The previous implementation only pre-fetched the intro
-      // segments, so each year clip stalled the playback loop on its own
-      // round-trip to ElevenLabs.
+      // Preload only the first PRELOAD_WINDOW text-bearing segments. The rest
+      // are streamed lazily as playback advances (see runPresentation below).
+      // This keeps dev/test runs from burning ElevenLabs credits on the entire
+      // timeline before the user has even watched a year.
       const textBearing = prepared
         .map((segment, index) => ({ segment, index }))
         .filter(({ segment }) => segment.text);
+
+      const initialBatch = textBearing.slice(0, PRELOAD_WINDOW);
 
       // Display progress is gated by min(workRatio, timeRatio) so the prep
       // animation always lasts at least MIN_PREP_DURATION_MS even when every
@@ -955,12 +961,12 @@ export default function IncomeGrowthBucketDiagram() {
       }
 
       try {
-        if (textBearing.length > 0) {
-          const total = textBearing.length;
+        if (initialBatch.length > 0) {
+          const total = initialBatch.length;
           let completed = 0;
 
           await mapWithConcurrency(
-            textBearing,
+            initialBatch,
             async ({ segment, index: segmentIndex }) => {
               if (cancelled) return;
               const url = await loadSpeechReliable(segment.text, {
@@ -972,7 +978,7 @@ export default function IncomeGrowthBucketDiagram() {
               completed += 1;
               workRatio = completed / total;
             },
-            4
+            PRELOAD_WINDOW
           );
         } else {
           workRatio = 1;
@@ -1007,9 +1013,30 @@ export default function IncomeGrowthBucketDiagram() {
       };
     }
 
+    // Keeps a rolling window of upcoming narration clips warm: at any point
+    // there should be PRELOAD_WINDOW text-bearing segments at or ahead of
+    // `fromIndex` that have either resolved (speechUrl set) or are in-flight.
+    // fetchSpeech dedupes by text, so repeat calls are cheap.
+    const fillLookahead = (fromIndex) => {
+      let seen = 0;
+      for (let i = fromIndex; i < presentationSegments.length && seen < PRELOAD_WINDOW; i += 1) {
+        const seg = presentationSegments[i];
+        if (!seg.text) continue;
+        seen += 1;
+        if (seg.speechUrl) continue;
+        loadSpeechReliable(seg.text, { attempts: 2, timeoutMs: 8000 }).then((url) => {
+          if (url) seg.speechUrl = url;
+        });
+      }
+    };
+
     const runPresentation = async () => {
       for (let index = playCursorRef.current; index < presentationSegments.length; index += 1) {
         if (cancelled) return;
+
+        // Keep the next PRELOAD_WINDOW text-bearing clips warm. Cheap due to
+        // fetchSpeech dedup; first call fires the load, later calls are no-ops.
+        fillLookahead(index);
 
         const segment = presentationSegments[index];
         playCursorRef.current = index;

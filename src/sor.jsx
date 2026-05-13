@@ -231,16 +231,16 @@ async function mapWithConcurrency(items, mapper, concurrency = 4) {
 
 function getSetupNarration(stage) {
   if (stage === "setup") {
-    return `In this walkthrough, we look at sequence of returns risk using two real retirement timelines. Both retirees start with one million dollars and withdraw sixty thousand dollars every year. The difference: one retires in January two-thousand, right at the peak of the dot-com bubble. The other retires in January nineteen-ninety-five, at the beginning of one of the greatest bull markets in history.`;
+    return `Today we will look at two retirees. Both did everything right — decades of saving, a one-million-dollar nest egg, and a sensible plan. Each year, they withdraw sixty thousand dollars from their portfolio to cover living expenses. Both portfolios are invested in the S-and-P five-hundred. The only difference between them is when they retire. One in January nineteen-ninety-five. The other, January two-thousand. Five years apart. Same plan. Same investment. Same withdrawals. Twenty years later, their outcomes will look nothing alike.`;
   }
   if (stage === "bad-intro") {
-    return `The retiree who starts in two-thousand faces an immediate crisis. The dot-com bubble collapses in year one — the S-and-P five-hundred falls nine percent. Year two, another twelve percent drop. Year three, twenty-two percent. Three consecutive market declines right out of the gate. Then in year nine of their retirement — two-thousand-eight — the financial crisis hits a portfolio that has already been badly damaged.`;
+    return `The two-thousand retiree walks straight into the dot-com crash. In year one, the market falls nine percent. Year two, it falls another twelve percent. Year three, twenty-two percent. Three down years in a row — right at the start of retirement.`;
   }
   if (stage === "good-intro") {
-    return `The retiree who starts in nineteen-ninety-five enters the same market — but at the right moment. Year one is up thirty-eight percent. Year two, twenty-three percent. Year three, thirty-three percent. Five consecutive double-digit years before a single down year arrives. When the dot-com bust eventually comes in years six, seven, and eight — and when two-thousand-eight hits in year fourteen — this portfolio absorbs each blow from a position of strength.`;
+    return `The nineteen-ninety-five retiree walks into a bull market. In year one, the market is up thirty-eight percent. Year two, up another twenty-three percent. Year three, up thirty-three percent. Three big up years in a row.`;
   }
   if (stage === "handoff") {
-    return `Same amount invested. Same withdrawals. Real S-and-P five-hundred returns. Just different starting years. Let us watch twenty years play out.`;
+    return `Same plan. Same market. Five years apart. Let us watch twenty years play out.`;
   }
   return "";
 }
@@ -266,11 +266,11 @@ function getYearNarration(phase, badYear, goodYear) {
   const afterWithdrawal = formatMoney(START_BALANCE - ANNUAL_WITHDRAWAL);
 
   if (y === 1) {
-    if (phase === 0) return `Year one of retirement. January two-thousand for the first retiree — January nineteen-ninety-five for the second. Both start with one million dollars.`;
-    if (phase === 1) return `Each pays ${withdrawal} in living expenses. Both portfolios drop to ${afterWithdrawal}.`;
-    if (phase === 2) return `The market in two-thousand falls nine percent as the dot-com bubble begins to burst. Retired Two-Thousand takes the full blow — portfolio drops to ${badEnd}.`;
-    if (phase === 3) return `In nineteen-ninety-five, the tech boom is just getting started. The S-and-P surges thirty-eight percent. Retired Ninety-Five climbs to ${goodEnd}.`;
-    if (phase === 4) return `After just one year — a ${gap} gap. And it is only year one.`;
+    if (phase === 0) return `Year one. January two-thousand for the first retiree. January nineteen-ninety-five for the second. Both portfolios begin at one million dollars.`;
+    if (phase === 1) return `Each retiree withdraws ${withdrawal} for the year. Both portfolios drop to ${afterWithdrawal}.`;
+    if (phase === 2) return `The market falls nine percent in two-thousand — the start of the dot-com crash. The two-thousand retiree's portfolio drops to ${badEnd}.`;
+    if (phase === 3) return `The nineteen-ninety-five retiree gains thirty-eight percent that year. Their portfolio climbs to ${goodEnd}.`;
+    if (phase === 4) return `After one year, the gap is already ${gap}.`;
   }
 
   if (y === 2) {
@@ -290,11 +290,11 @@ function getYearNarration(phase, badYear, goodYear) {
   }
 
   if (y === 4) {
-    if (phase === 0) return `Year four. Two-thousand-three — the market finally recovers. Nineteen-ninety-eight for Retired Ninety-Five.`;
-    if (phase === 1) return `${withdrawal} in living expenses from each.`;
-    if (phase === 2) return `Two-thousand-three. The market rebounds twenty-nine percent. Retired Two-Thousand gains ${badMktAmt} from the market.`;
-    if (phase === 3) return `Almost the same return in nineteen-ninety-eight — twenty-nine percent. But Retired Ninety-Five gains ${goodMktAmt}. Same percentage. Very different dollars. The base is everything.`;
-    if (phase === 4) return `Even with a strong recovery, Retired Two-Thousand is still shrinking. The withdrawals are too large relative to the damaged base.`;
+    if (phase === 0) return `Year four. Two-thousand-three for the first retiree. Nineteen-ninety-eight for the second.`;
+    if (phase === 1) return `Each retiree withdraws another ${withdrawal} for the year.`;
+    if (phase === 2) return `The market rebounds twenty-nine percent in two-thousand-three. The two-thousand retiree gains ${badMktAmt} from the market.`;
+    if (phase === 3) return `The same year, nineteen-ninety-eight is up twenty-nine percent. But the nineteen-ninety-five retiree gains ${goodMktAmt}. Same percentage. Very different dollars.`;
+    if (phase === 4) return `This is sequence of returns risk. Bad returns early in retirement do damage that good returns later cannot undo — because every withdrawal during the bad years sells investments at low prices, leaving less capital to recover with.`;
   }
 
   if (y === 5) {
@@ -395,22 +395,60 @@ function buildSORSegments({ badSim, goodSim, includeIntro }) {
     }
   }
 
-  // Full treatment: years 1–6 (indices 0–5)
-  // 5 phases per year: 0=intro, 1=withdrawal, 2=bad market, 3=good market, 4=close
-  for (let index = 0; index <= 5; index += 1) {
-    const bad = badSim[index];
-    const good = goodSim[index];
-    const isDramatic = index < 3;
-    const p = isDramatic
-      ? { p0: 350, p1: 700, p2: 600, p3: 600, p4: 900 }
-      : { p0: 200, p1: 500, p2: 400, p3: 400, p4: 700 };
+  // Tightened walkthrough: Year 1 in full → bridge narration over a visual
+  // blast through years 2 and 3 → Year 4 in full (lands "sequence of returns
+  // risk"). Years 5 and 6 are skipped; they show up as past rows in the
+  // fast-track table.
 
+  // Year 1 — full 5-phase treatment, dramatic timing
+  {
+    const bad = badSim[0];
+    const good = goodSim[0];
+    const p = { p0: 350, p1: 700, p2: 600, p3: 600, p4: 900 };
     segments.push(
-      { kind: "year", section: "walkthrough", yearIndex: index, phase: 0, text: getYearNarration(0, bad, good), waitForEnd: true, leadMs: 120, pauseAfter: p.p0 },
-      { kind: "year", section: "walkthrough", yearIndex: index, phase: 1, text: getYearNarration(1, bad, good), waitForEnd: true, pauseAfter: p.p1 },
-      { kind: "year", section: "walkthrough", yearIndex: index, phase: 2, text: getYearNarration(2, bad, good), waitForEnd: true, pauseAfter: p.p2 },
-      { kind: "year", section: "walkthrough", yearIndex: index, phase: 3, text: getYearNarration(3, bad, good), waitForEnd: true, pauseAfter: p.p3 },
-      { kind: "year", section: "walkthrough", yearIndex: index, phase: 4, text: getYearNarration(4, bad, good), waitForEnd: true, pauseAfter: p.p4 },
+      { kind: "year", section: "walkthrough", yearIndex: 0, phase: 0, text: getYearNarration(0, bad, good), waitForEnd: true, leadMs: 120, pauseAfter: p.p0 },
+      { kind: "year", section: "walkthrough", yearIndex: 0, phase: 1, text: getYearNarration(1, bad, good), waitForEnd: true, pauseAfter: p.p1 },
+      { kind: "year", section: "walkthrough", yearIndex: 0, phase: 2, text: getYearNarration(2, bad, good), waitForEnd: true, pauseAfter: p.p2 },
+      { kind: "year", section: "walkthrough", yearIndex: 0, phase: 3, text: getYearNarration(3, bad, good), waitForEnd: true, pauseAfter: p.p3 },
+      { kind: "year", section: "walkthrough", yearIndex: 0, phase: 4, text: getYearNarration(4, bad, good), waitForEnd: true, pauseAfter: p.p4 },
+    );
+  }
+
+  // Bridge — voice-only narration starts, then visual blasts through years 2
+  // and 3 with no narration of their own. waitForEnd:false on the bridge text
+  // lets the audio play while subsequent year animations run. A wait-audio
+  // segment after the visuals ensures the bridge audio finishes before Year 4.
+  const bridgeText = `The dot-com crash continues. Two-thousand-one falls twelve percent. Two-thousand-two falls another twenty-two percent. Three down years in a row for the two-thousand retiree — every withdrawal selling into a falling market. Meanwhile, nineteen-ninety-six and nineteen-ninety-seven bring twenty-three and thirty-three percent gains for the other retiree.`;
+
+  segments.push(
+    // Year 2 phase 0 carries the bridge narration; remaining phases just animate.
+    { kind: "year", section: "walkthrough", yearIndex: 1, phase: 0, text: bridgeText, waitForEnd: false, leadMs: 100, pauseAfter: 250 },
+    { kind: "year", section: "walkthrough", yearIndex: 1, phase: 1, pauseAfter: 350 },
+    { kind: "year", section: "walkthrough", yearIndex: 1, phase: 2, pauseAfter: 400 },
+    { kind: "year", section: "walkthrough", yearIndex: 1, phase: 3, pauseAfter: 400 },
+    { kind: "year", section: "walkthrough", yearIndex: 1, phase: 4, pauseAfter: 250 },
+    // Year 3 — silent visual blast, same compressed timing.
+    { kind: "year", section: "walkthrough", yearIndex: 2, phase: 0, pauseAfter: 250 },
+    { kind: "year", section: "walkthrough", yearIndex: 2, phase: 1, pauseAfter: 350 },
+    { kind: "year", section: "walkthrough", yearIndex: 2, phase: 2, pauseAfter: 400 },
+    { kind: "year", section: "walkthrough", yearIndex: 2, phase: 3, pauseAfter: 400 },
+    { kind: "year", section: "walkthrough", yearIndex: 2, phase: 4, pauseAfter: 250 },
+    // Let the bridge narration finish before Year 4 starts.
+    { kind: "wait-audio", section: "walkthrough", pauseAfter: 400 },
+  );
+
+  // Year 4 — full 5-phase treatment, lands the lesson + names "sequence of
+  // returns risk" in p4.
+  {
+    const bad = badSim[3];
+    const good = goodSim[3];
+    const p = { p0: 200, p1: 500, p2: 400, p3: 400, p4: 1200 };
+    segments.push(
+      { kind: "year", section: "walkthrough", yearIndex: 3, phase: 0, text: getYearNarration(0, bad, good), waitForEnd: true, leadMs: 120, pauseAfter: p.p0 },
+      { kind: "year", section: "walkthrough", yearIndex: 3, phase: 1, text: getYearNarration(1, bad, good), waitForEnd: true, pauseAfter: p.p1 },
+      { kind: "year", section: "walkthrough", yearIndex: 3, phase: 2, text: getYearNarration(2, bad, good), waitForEnd: true, pauseAfter: p.p2 },
+      { kind: "year", section: "walkthrough", yearIndex: 3, phase: 3, text: getYearNarration(3, bad, good), waitForEnd: true, pauseAfter: p.p3 },
+      { kind: "year", section: "walkthrough", yearIndex: 3, phase: 4, text: getYearNarration(4, bad, good), waitForEnd: true, pauseAfter: p.p4 },
     );
   }
 
@@ -902,8 +940,12 @@ function SORFastTrackTable({ badSim, goodSim, yearIndex, phase, fastPass }) {
   const badRef = useRef(null);
   const goodRef = useRef(null);
 
-  const ftRows = badSim.slice(6, 15).map((bad, i) => {
-    const idx = i + 6;
+  // Show years 1–15 in the fast-track table. Years 1–6 are already past by
+  // the time fast-track begins (yearIndex starts at 6 = year 7), so they
+  // render as completed rows with their end balances filled in — giving the
+  // viewer the full history they just watched, not a sudden jump-cut to year 7.
+  const ftRows = badSim.slice(0, 15).map((bad, i) => {
+    const idx = i;
     const good = goodSim[idx];
     return { bad, good, idx, isCurrent: idx === yearIndex, isPast: idx < yearIndex, isFuture: idx > yearIndex };
   });
